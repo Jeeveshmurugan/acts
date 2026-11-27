@@ -8,7 +8,16 @@
 NJOB=$1
 NEVENTS=${2:-2000}
 NPU=${3:-200}
+SAMPLE=${4:-tau3mu}
 
+case "$SAMPLE" in
+    tau3mu) SIM_SCRIPT="full_chain_odd_tau3mu.py";;
+    minbias) SIM_SCRIPT="full_chain_odd_minbias.py";;
+    *)
+        echo "unknown sample: $SAMPLE" >&2
+        exit 2
+        ;;
+esac
 # Same seed derivation as acts_tau3mu_submit.sh: hash the job index (Murmur3
 # fmix32) instead of passing it directly, since RandomNumbers::generateSeed
 # does seed = base_seed + eventNumber, so sequential small job indices fed
@@ -24,7 +33,7 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$HERE/../../../.." && pwd)"
 STATE="$ROOT/.purdue-af"
 BUILD="$ROOT/build"
-OUTBASE="${TAU3MU_OUTPUT_DIR:-$STATE/output}"
+OUTBASE="${TAU3MU_OUTPUT_DIR:-/depot/cms/users/jmuruga/acts_${SAMPLE}_output}"
 
 # NOTE: not using `set -e` here. The LCG view's setup.sh runs a battery of
 # optional auto-detections for tools we don't use (R, Julia, gnuplot, ...),
@@ -72,16 +81,16 @@ fi
 
 cd "$ROOT/Examples/Scripts/Python"
 
-LOCALOUT=$(mktemp -d "/tmp/odd_output_tau3mu_run_${NJOB}.XXXXXX")
+LOCALOUT=$(mktemp -d "/tmp/odd_output_${SAMPLE}_run_${NJOB}.XXXXXX")
 trap 'rm -rf "$LOCALOUT"' EXIT
 
 echo "job=${NJOB} seed=${SEED} events=${NEVENTS} pu=${NPU} threads=${TAU3MU_THREADS} host=$(hostname) localout=${LOCALOUT}"
 
-python3.11 full_chain_odd_tau3mu.py --ttbar --ttbar-pu "${NPU}" --events "${NEVENTS}" --rs "${SEED}" --threads "${TAU3MU_THREADS}" \
+python3.11 "$SIM_SCRIPT" --ttbar --ttbar-pu "${NPU}" --events "${NEVENTS}" --rs "${SEED}" --threads "${TAU3MU_THREADS}" \
     --output "$LOCALOUT" --no-output-root --no-output-obj
 RC=$?
 if [ "$RC" -ne 0 ]; then
-    echo "full_chain_odd_tau3mu.py failed with exit code $RC" >&2
+    echo "$SIM_SCRIPT failed with exit code $RC" >&2
     exit "$RC"
 fi
 
@@ -89,6 +98,6 @@ fi
 # rejected and slimmed the rest to muon-system hits (--muon-system-only, on
 # by default; see muon_system_slim.py).
 mkdir -p "$OUTBASE"
-tar -czf "$OUTBASE/odd_output_tau3mu_run_${NJOB}.tar.gz" -C "$(dirname "$LOCALOUT")" "$(basename "$LOCALOUT")"
+tar -czf "$OUTBASE/odd_output_${SAMPLE}_run_${NJOB}.tar.gz" -C "$(dirname "$LOCALOUT")" "$(basename "$LOCALOUT")"
 
 echo "DONE job=${NJOB} seed=${SEED}"

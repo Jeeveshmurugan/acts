@@ -32,10 +32,10 @@ import time
 RUN_SCRIPT = str(pathlib.Path(__file__).resolve().parent / "run_one_job.sh")
 
 
-def run_job(job_index, n_events, pu):
+def run_job(job_index, n_events, pu, sample):
     t0 = time.time()
     proc = subprocess.run(
-        ["bash", RUN_SCRIPT, str(job_index), str(n_events), str(pu)],
+        ["bash", RUN_SCRIPT, str(job_index), str(n_events), str(pu), sample],
         capture_output=True,
         text=True,
     )
@@ -50,6 +50,7 @@ def run_job(job_index, n_events, pu):
 
 def main():
     ap = argparse.ArgumentParser()
+    ap.add_argument("--sample",choices=["tau3mu", "minbias"], default="tau3mu")
     ap.add_argument("--gateway-address", default=None)
     ap.add_argument("--proxy-address", default=None)
     ap.add_argument("--cluster-name", required=True)
@@ -77,6 +78,7 @@ def main():
             i,
             args.events_per_job,
             args.pu,
+            args.sample,
             pure=False,
             resources={"tau3mu_slot": 1},
         )
@@ -93,6 +95,7 @@ def main():
             n_fail += 1
             print(f"[FAIL] job={res['job_index']} wall={res['wall_s']:.1f}s")
             print(res["stderr_tail"])
+        print(res["stdout_tail"])
 
     print(f"\nDone: {n_ok} succeeded, {n_fail} failed out of {len(futures)}")
 

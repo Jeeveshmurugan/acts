@@ -150,7 +150,8 @@ parser.add_argument(
     default=True,
     action=argparse.BooleanOptionalAction,
 )
-
+parser.add_argument("--rs", type=int, default=42)
+parser.add_argument("--threads", type=int, default=-1)
 args = parser.parse_args()
 if args.reco is None:
     args.reco = not args.muon_system_only
@@ -183,12 +184,12 @@ detector = getOpenDataDetector(odd_dir=geoDir, materialDecorator=oddMaterialDeco
 trackingGeometry = detector.trackingGeometry()
 decorators = detector.contextDecorators()
 field = acts.ConstantBField(acts.Vector3(0.0, 0.0, 2.0 * u.T))
-rnd = acts.examples.RandomNumbers(seed=42)
+rnd = acts.examples.RandomNumbers(seed=args.rs)
 
 s = acts.examples.Sequencer(
     events=args.events,
     skip=args.skip,
-    numThreads=1 if args.geant4 else -1,
+    numThreads=1 if args.geant4 else args.threads,
     outputDir=str(outputDir),
 )
 
